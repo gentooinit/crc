@@ -4,7 +4,7 @@ A PAINLESS GUIDE TO CRC ERROR DETECTION ALGORITHMS
 "Everything you wanted to know about CRC algorithms, but were afraid
 to ask for fear that errors in your understanding might be detected."
 
-Version : 3.
+Version : 4.
 Date    : 19 August 1993.
 Author  : Ross N. Williams.
 Net     : ross@guest.adelaide.edu.au.
@@ -22,6 +22,8 @@ Status  : Copyright (C) Ross Williams, 1993. However, permission is
 Thanks  : Thanks to Jean-loup Gailly (jloup@chorus.fr) and Mark Adler
           (me@quest.jpl.nasa.gov) who both proof read this document
           and picked out lots of nits as well as some big fat bugs.
+          
+Modify	: init0 (gentooinit@hotmail.com)
 
 Table of Contents
 -----------------
@@ -535,7 +537,7 @@ arithmetic. This is the same division as before:
             1100001010 = Quotient (nobody cares about the quotient)
        _______________
 10011 ) 11010110110000 = Augmented message (1101011011 + 0000)
-=Poly  10011,,.,,....
+=Poly   10011,,.,,....
         -----,,.,,....
          10011,.,,....
          10011,.,,....
@@ -795,7 +797,7 @@ things:
 
    * The top byte of the register now doesn't matter. No matter how
      many times and at what offset the poly is XORed to the top 8
-     bits, they will all be shifted out the right hand side during the
+     bits, they will all be shifted out the left hand side during the
      next 8 iterations anyway.
 
 
@@ -846,7 +848,7 @@ reduced to:
    While (augmented message is not exhaused)
       Begin
       Top = top_byte(Register);
-      Register = (Register << 24) | next_augmessage_byte;
+      Register = (Register << 8) | next_augmessage_byte;
       Register = Register XOR precomputed_table[Top];
       End
 
@@ -915,7 +917,7 @@ was handed to us by some other code, it could be a BIG problem. One
 alternative is simply to append the following line after the above
 loop, once for each zero byte:
 
-      for (i=0; i<W/4; i++) r = (r << 8) ^ t[(r >> 24) & 0xFF];
+      for (i=0; i<W/8; i++) r = (r << 8) ^ t[(r >> 24) & 0xFF];
 
 This looks like a sane enough solution to me. However, at the further
 expense of clarity (which, you must admit, is already a pretty scare
@@ -948,15 +950,15 @@ optimization, we return to the processing diagram given earlier.
 
 Now, note the following facts:
 
-TAIL: The W/4 augmented zero bytes that appear at the end of the
+TAIL: The W/8 augmented zero bytes that appear at the end of the
       message will be pushed into the register from the right as all
       the other bytes are, but their values (0) will have no effect
       whatsoever on the register because 1) XORing with zero does not
       change the target byte, and 2) the four bytes are never
       propagated out the left side of the register where their
       zeroness might have some sort of influence. Thus, the sole
-      function of the W/4 augmented zero bytes is to drive the
-      calculation for another W/4 byte cycles so that the end of the
+      function of the W/8 augmented zero bytes is to drive the
+      calculation for another W/8 byte cycles so that the end of the
       REAL data passes all the way through the register.
 
 HEAD: If the initial value of the register is zero, the first four
@@ -973,7 +975,7 @@ These facts, combined with the XOR property
 
    (A xor B) xor C = A xor (B xor C)
 
-mean that message bytes need not actually travel through the W/4 bytes
+mean that message bytes need not actually travel through the W/8 bytes
 of the register. Instead, they can be XORed into the top byte just
 before it is used to index the lookup table. This leads to the
 following modified version of the algorithm.
@@ -1283,7 +1285,7 @@ the algorithm:
    REFIN: This is a boolean parameter. If it is FALSE, input bytes are
    processed with bit 7 being treated as the most significant bit
    (MSB) and bit 0 being treated as the least significant bit. If this
-   parameter is FALSE, each byte is reflected before being processed.
+   parameter is TRUE, each byte is reflected before being processed.
 
    REFOUT: This is a boolean parameter. If it is set to FALSE, the
    final value in the register is fed into the XOROUT stage directly,
